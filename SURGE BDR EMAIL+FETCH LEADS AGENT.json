@@ -25,7 +25,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "e1ff6f81-e621-4400-b8a9-4d4e5a600c05:sk-Y2I1ZjA1NTYtYzRmMS00YjBlLTg5ZmItOTgzZDU5ZWJlNGU4"
+              "value": ""
             }
           ]
         },
@@ -120,7 +120,6 @@
       "name": "Get many rows",
       "credentials": {
         "supabaseApi": {
-          "id": "Atwq98Wsg0nHOsfj",
           "name": "Supabase account 3"
         }
       }
@@ -135,7 +134,7 @@
         -1136,
         -752
       ],
-      "id": "dd7e68d1-4285-425a-9682-8d3f458ad3e2",
+     
       "name": "Code in JavaScript"
     },
     {
@@ -186,8 +185,7 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-Api-key",
-              "value": "k92m3FjsXD2Bt9frURn0ZA"
+            
             }
           ]
         },
