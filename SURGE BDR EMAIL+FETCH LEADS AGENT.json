@@ -1,0 +1,724 @@
+{
+  "name": "SURGE BDR EMAIL+FETCH LEADS AGENT",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "",
+        "height": 528,
+        "width": 1712
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1632,
+        -960
+      ],
+      "typeVersion": 1,
+      "id": "b733f8ac-2313-4326-b269-a07b3c1ead53",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-d7b62b.stack.tryrelevance.com/latest/agents/trigger",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "e1ff6f81-e621-4400-b8a9-4d4e5a600c05:sk-Y2I1ZjA1NTYtYzRmMS00YjBlLTg5ZmItOTgzZDU5ZWJlNGU4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \n  \"message\": { \n    \"role\": \"user\", \n    \"content\": JSON.stringify($input.all()) \n  }, \n  \"agent_id\": \"8a1c28de-1332-4d45-9e2a-4211ae412642\" \n} }}",
+        "options": {}
+      },
+      "id": "a11e448a-daf0-4963-bd81-6ee46ec2fa99",
+      "name": "Relevance Score",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -320,
+        -560
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "EMAIL WORKFLOW",
+        "height": 544,
+        "width": 1680
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1616,
+        -400
+      ],
+      "typeVersion": 1,
+      "id": "6bf2a63e-2913-48b2-8f54-5ee8fbff2ade",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "apollo-leads-fetch",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1536,
+        -640
+      ],
+      "id": "01cd90d3-aad1-4ab9-b369-50f7f522b6fc",
+      "name": "Webhook",
+      "webhookId": "ebccb6d2-29a6-4bc6-87c5-303a83be0783"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 14
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1328,
+        -144
+      ],
+      "id": "fa140efb-6567-490c-8616-11443ca78659",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "leads",
+        "limit": 3,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "uu_id",
+              "condition": "eq",
+              "keyValue": "a8b361f2-b902-474d-a9ae-fe787a6e8032"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        -144
+      ],
+      "id": "eb6dc90f-5df7-4255-8960-aed048424265",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Atwq98Wsg0nHOsfj",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      details: $json.people.map(p => ({\n        id: p.id,\n        first_name: p.first_name,\n        last_name: p.last_name,\n        linkedin_url: p.linkedin_url,\n        organization_name: p.organization_name,\n        organization_website: p.organization_website,\n        title: p.title,\n        country: p.country,\n        city: p.city\n      })),\n      reveal_personal_emails: true,\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        -752
+      ],
+      "id": "dd7e68d1-4285-425a-9682-8d3f458ad3e2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional data summarizer. You will receive a JSON array representing multiple persons' full professional profiles. The JSON may contain fields such as id, first_name, last_name, linkedin_url, email, phone_number, organization_name, organization_website, employment_history, and organization details.\n\nYou will also receive the following campaign information:\n\nCampaign ID: {{$json.campaign_id}}\nUser ID: {{$json.user_id}}\nCampaign Name: {{ $json.campaign_name }}\n\nInput:\n{{ JSON.stringify($json.matches) }}\n\nYour task for each lead:\n\n1. Keep all fields exactly the same as they appear — do not remove or rename any field.\n2. Add the following fields to each lead:\n   - \"campaign_id\": the provided Campaign ID\n   - \"user_id\": the provided User ID\n   - \"campaign_name\": the provided Campaign Name\n3. Replace the employment_history field with a new field called summary.\n   - The summary should be a 2–3 line professional description capturing:\n     - The person's roles, experience, and industries\n     - Skills and functions based on their employment history\n     - Include every company and role from employment_history using available details (name, website, industry, etc.)\n4. If email or phone_number exist, convert the array into a string by taking the first value only. Do not include brackets [ ].\n5. Return valid JSON only.\n\nExample Output for a single lead:\n\n{\n  \"id\": \"123\",\n  \"first_name\": \"Farah\",\n  \"last_name\": \"Zafar\",\n  \"linkedin_url\": \"https://linkedin.com/in/farah\",\n  \"email\": \"farah@example.com\",\n  \"phone_number\": \"+923001234567\",\n  \"organization_name\": \"Alpha Education Network\",\n  \"organization_website\": \"http://alphaedu.com\",\n  \"country\":\"US\",\n  \"campaign_id\": \"fa90f283-3136-45ac-a349-2ad3295e9957\",\n  \"user_id\": \"76814e71-d108-44a7-95f4-47de6721dc46\",\n  \"campaign_name\": \"Q1 Tech companies\",\n  \"summary\": \"Experienced marketing professional with expertise in brand management, digital strategy, and social media. Worked at ABC (http://abc.com), XYZ (http://xyz.com), and other organizations, gaining extensive experience across corporate marketing, social media campaigns, and brand development.\"\n},\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        -720
+      ],
+      "id": "ae8743ee-80c2-46e2-83c6-054e68e7c1f1",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "gpt-3.5-turbo"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        -560
+      ],
+      "id": "85752b87-e645-4f00-a8cf-b09dbf8685a7",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ePk7PxN0btfeDKI9",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/people/bulk_match",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-key",
+              "value": "k92m3FjsXD2Bt9frURn0ZA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"details\":{{ JSON.stringify($json.details)}},\n  \"reveal_personal_emails\": true\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -976,
+        -752
+      ],
+      "id": "8884994f-da61-41b7-a9a2-d0543b5f921b",
+      "name": "Enrich email"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "gpt-3.5-turbo"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1024,
+        -192
+      ],
+      "id": "e1e91867-31b4-43be-8808-701d5b4b29ac",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ePk7PxN0btfeDKI9",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -896,
+        -112
+      ],
+      "id": "eafb6a61-a079-4106-a8b4-d7d22a3c5424",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -80
+      ],
+      "id": "e4057109-baf5-448b-82a1-2c6f7674d8a4"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1328,
+        -320
+      ],
+      "id": "5c0029e6-aded-407f-9e20-343945ca966e",
+      "name": "Wait",
+      "webhookId": "664ff13b-ccac-4431-abd3-ff5dd9cb5dc6"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \"email\": JSON.parse($json[\"output\"]).email, \"subject\": JSON.parse($json[\"output\"]).subject, \"body\": JSON.parse($json[\"output\"]).body } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        -352
+      ],
+      "id": "4f545f0b-af96-481b-a8bb-21a9c5d63d87",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are Nova — the AI Sales Assistant at TechSurgeAI, a UK-based company helping forward-thinking businesses automate workflows, optimize sales processes, and integrate AI systems that replace repetitive manual work with smart automation.\n\nYour job is to write a **personalized, emotionally intelligent, and high-converting B2B outreach email** for CEOs, founders, or decision-makers.\n\n---\n\n### INPUT:\nYou will receive lead data in JSON format.\n{{JSON.stringify($input.all())}}\n\n---\n\n### OUTPUT:\nReturn **only valid JSON** in the structure below — no extra text or markdown.\n\n{\n  \"email\": \"{{ $json.emails }}\",\n  \"subject\": \"string\",\n  \"body\": \"string\"\n}\n\n---\n\n### EMAIL STRUCTURE:\n\n1. **Subject (6–10 words)**  \n   - Personal, curiosity-driven, and relevant.  \n   - Examples:  \n     - \"{{ $json.first_name }}, a smarter way to scale {{ $json.organization_name }}\"  \n     - \"Can AI help {{ $json.organization_name }} cut manual work?\"  \n     - \"Transforming {{ $json.industry }} operations — in weeks, not months\"  \n\n---\n\n2. **Opening (Personal & Genuine)**  \n   Greet {{ $json.first_name }}.  \n   Mention something authentic about {{ $json.organization_name }} or their {{ $json.industry }} / {{ $json.summary }}.  \n   Make it sound observant and real, not templated.  \n   Example:  \n   > \"I came across {{ $json.organization_name }} and was genuinely impressed by how your team is pushing innovation in the {{ $json.industry }} space. It’s clear you value efficiency and growth — two areas where AI can multiply impact.\"\n\n---\n\n3. **Pain Points (Empathetic & Insightful)**  \n   Reference 1–2 relevant issues from {{ $json.pain_points_identified }}.  \n   Show you understand their daily challenges.  \n   Example:  \n   > \"Many leaders in {{ $json.industry }} struggle with manual reporting, slow processes, and lack of real-time visibility — which often slows growth.\"\n\n---\n\n4. **Solution (Strategic & Specific)**  \n   Introduce TechSurgeAI as a **strategic automation partner**.  \n   Explain clearly how {{ $json.recommended_services }} solve those problems.  \n   Connect the outcome to **speed, accuracy, scalability, and cost savings**.  \n   Example:  \n   > \"At TechSurgeAI, we help teams streamline operations using intelligent automation — whether it’s automating lead management, syncing sales tasks, or integrating AI analytics. The result? Faster execution, fewer errors, and freedom to scale without extra headcount.\"\n\n---\n\n5. **Credibility (Proof & Trust)**  \n   Mention that TechSurgeAI has helped **120+ companies** across IT, SaaS, and consulting automate up to **80% of manual work**.  \n   Include the link for validation:  \n   > \"You can explore how we’ve helped other companies accelerate growth here: https://techsurge.ai/case-studies/\"\n\n---\n\n6. **CTA (Warm & Respectful)**  \n   End confidently and friendly — make it easy for them to say yes.  \n   Example:  \n   > \"Would you be open to a quick chat this week to explore how automation could accelerate {{ $json.organization_name }}’s growth?\"  \n   > \"Happy to share a quick demo if that’s easier.\"\n\n---\n\n7. **Signature**\nNova  \nAI Sales Assistant — TechSurgeAI  \n📞 +44 7341 367542  \n✉️ contact@techsurge.ai  \n🌐 https://www.technosurge.co.uk/  \n\n---\n\n### TONE:\n- Professional yet warm and conversational  \n- Clear, credible, and concise (under 170 words)  \n- Sound like a smart human consultant, not a sales robot  \n- Focus on value, relevance, and business impact  \n \n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        -352
+      ],
+      "id": "4d96f956-2a96-4723-a84a-15354552de0f",
+      "name": "Email agent"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "leads",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "condition": "eq",
+              "keyValue": "={{ $(\"Edit Fields\").item.json.email }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -224
+      ],
+      "id": "e5d67a8c-a3c0-4118-97dc-2e302a99fcfe",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Atwq98Wsg0nHOsfj",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.body }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        -352
+      ],
+      "id": "3b980464-43b8-4958-86ec-2e90e8841205",
+      "name": "Send a message",
+      "webhookId": "12132e6b-f08f-4d5d-a1b0-f93db74e46bc",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "8WcTt3jVZH0Z0u2m",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI output JSON (currently stringified)\nconst rawOutput = items[0].json.output;\n\n// Convert the string back into an actual JS array\nconst leadsArray = JSON.parse(rawOutput);\n\n// Return each lead as an item (n8n expects array of items)\nreturn leadsArray.map(lead => ({ json: lead }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        -800
+      ],
+      "id": "df7353e9-1917-47db-adce-1b667dad82a8",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gvlgarsvilkpjybkwtjw.supabase.co/rest/v1/leads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        -864
+      ],
+      "id": "99a656d5-6b96-4b0d-bc1c-70d92b68ad9a",
+      "name": "Update spabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Atwq98Wsg0nHOsfj",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -160,
+        -704
+      ],
+      "id": "f405ff4c-fe3f-4131-a7bf-776969e81b1d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Webhook ka body\nconst body = $json.body;\n\n// Output me sirf ye 3 fields bhejo\nreturn [\n  {\n    json: {\n      campaign_id: body.campaign_id,\n      user_id: body.user_id,\n      campaign_name: body.campaign_name.replace(/\"/g, '') // remove extra quotes if any\n    }\n  }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        -560
+      ],
+      "id": "40e8e6b5-b54a-4474-8692-34694dacf61f",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -768,
+        -720
+      ],
+      "id": "0df56084-dac1-45a3-83e2-40269c47e8fc",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/mixed_people/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "MliidqleCMGfYJJXtBd9Kg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1312,
+        -752
+      ],
+      "id": "66e7106a-fa9b-47d3-8f40-f673a73d317a",
+      "name": "Fetch Leads"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -416,
+        -368
+      ],
+      "id": "d5eb6202-942f-4d46-b486-24cf3f186f24",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Relevance Score": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Enrich email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich email": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Relevance Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Replace Me",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Email agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update spabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b280b205-d808-4297-a13a-4fbf59860134",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "88378f4c7b02785077a2efe5d5395947248435b9cba302b4892342f18f1c431b"
+  },
+  "id": "fD9AxPFoaryLNLSe",
+  "tags": []
+}
